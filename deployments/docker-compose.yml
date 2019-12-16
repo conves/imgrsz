@@ -1,16 +1,33 @@
 version: '3'
 
 services:
-  imgresizer:
-    container_name: imgresizer_app
+  api:
+    container_name: imgresizer_api
     build:
       context: ..
       dockerfile: deployments/api/Dockerfile
     volumes:
-      - $PWD/images:/images
       - $PWD/swagger-ui:/swagger-ui
     ports:
       - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - resizer
+    environment:
+      IMGRESIZER_REDIS_URL: redis:6379
+    networks:
+      - backend
+
+  resizer:
+    container_name: imgresizer_resizer
+    build:
+      context: ..
+      dockerfile: deployments/resizer/Dockerfile
+    volumes:
+      - $PWD/images:/images
+    ports:
+      - "8081:8080"
     restart: unless-stopped
     depends_on:
       - redis

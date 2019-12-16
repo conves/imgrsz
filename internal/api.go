@@ -46,8 +46,8 @@ var (
 	}, []string{"status"})
 )
 
-func NewService(queue ProcessingQueue, store ImageStore, ackbus ImageProcessedAckBus, httpTimeout int) *service {
-	svc := service{
+func NewService(queue ProcessingQueue, store ImageStore, ackbus ImageProcessedAckBus, httpTimeout int) *Service {
+	svc := Service{
 		queue:  queue,
 		store:  store,
 		ackbus: ackbus,
@@ -119,14 +119,14 @@ func metricsMdw(h http.Handler) http.Handler {
 	})
 }
 
-// ServeHTTP implements the http.Handler interface for the service type.
-func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP implements the http.Handler interface for the Service type.
+func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.handler.ServeHTTP(w, r)
 }
 
-// service is the struct that contains the server handler as well as
-// any references to services that the service needs.
-type service struct {
+// Service is the struct that contains the server handler as well as
+// any references to services that the Service needs.
+type Service struct {
 	queue       ProcessingQueue
 	store       ImageStore
 	ackbus      ImageProcessedAckBus
@@ -134,7 +134,7 @@ type service struct {
 	httpTimeout int
 }
 
-func (svc *service) imgHandler(rw http.ResponseWriter, req *http.Request) {
+func (svc *Service) imgHandler(rw http.ResponseWriter, req *http.Request) {
 	var sizeStr string
 	size, ok := req.URL.Query()["size"]
 	if !ok || len(size[0]) < 1 {

@@ -22,11 +22,17 @@ func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
 }
 
-var svc *internal.service
+var svc *internal.Service
 
 // testMain returns an integer denoting an exit code to be returned and used in
 // TestMain. The exit code 0 denotes success, all other codes denote failure.
 func testMain(m *testing.M) int {
+	// Overwrite redis-url flag with env var if provided
+		envRedisDsn := os.Getenv("IMGRESIZER_REDIS_URL")
+	if envRedisDsn != "" {
+		*redisDsn = envRedisDsn
+	}
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     *redisDsn,
 		Password: *redisPass,
@@ -39,22 +45,18 @@ func testMain(m *testing.M) int {
 	}
 	defer client.Close()
 
-	client.FlushDB() // todo maybe decide whether to flush it or not based on a flag
+	// client.FlushDB()
 
-	ackbus := newRedisImageProcessedAckBus(client, *redisDoneCh)
+	ackbus := internal.NewRedisImageProcessedAckBus(client, *redisDoneCh)
 	defer ackbus.Close()
 
-	queue := newRedisQueue(client)
-	store := newRedisCachedFsImageStore(client, *basepath)
+	queue := internal.NewRedisQueue(client)
+	store := internal.NewRedisCachedFsImageStore(client, *basepath)
 
-	// Start image processing workers
-	for i := 0; i < *workers; i++ {
-		go ProcessingWorker{queue: queue, store: store, ackbus: ackbus, basepath: *basepath}.Do()
-	}
+	fileWatchingWorker := internal.NewFileWatchingWorker(queue, store, ackbus, *basepath)
+	go fileWatchingWorker.Do()
 
-	go internal.FileWatchingWorker{queue: queue, basepath: *basepath}.Do()
-
-	svc = internal.NewService(queue, store, ackbus)
+	svc = internal.NewService(queue, store, ackbus, *timeout)
 
 	return m.Run()
 }
