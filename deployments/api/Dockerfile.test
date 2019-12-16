@@ -1,0 +1,15 @@
+FROM golang:1.13-alpine AS src
+
+# Install dependencies
+RUN apk update && apk upgrade; \
+    apk add --update --no-cache --repository http://dl-3.alpinelinux.org/alpine/edge/community --repository http://dl-3.alpinelinux.org/alpine/edge/main vips-dev; \
+    apk add build-base
+
+# Copy Repository
+WORKDIR /go/src/github.com/conves/imgrsz/
+COPY ./go.mod ./go.sum *.go ./
+
+RUN go mod download
+
+# Run tests
+CMD go test -args -redis-url=redis:6379 -basepath=/images
